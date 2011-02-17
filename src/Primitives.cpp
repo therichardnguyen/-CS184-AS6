@@ -18,7 +18,6 @@ Sphere::Sphere(vec4 center, double radius, MaterialInfo m) {
 
 //Checks for intersection with the given ray
 double Sphere::intersect(Ray & ray) {
-    IMPLEMENT_ME(__LINE__, __FILE__);
 
     return numeric_limits<double>::infinity(); //no hit!
 }
