@@ -15,13 +15,17 @@ inline vec3 pairwiseMult(const vec3 &a, const vec3 &b) {
 	return vec3(a[0]*b[0], a[1]*b[1], a[2]*b[2]);
 }
 
+// kd(CI) max(^I * ^n, 0)
 inline vec3 diffuse(double kd, vec3 color, vec3 light,vec3 i, vec3 n ) {
 	return kd*pairwiseMult(color,light)*max(i.normalize() * n.normalize(), 0.0);
 }
 
+// S = (Ksm) C + (1 - ksm) (1,1,1)
 inline vec3 specularHighlight(double ksm, vec3 color) {
 	return ksm*color + (1-ksm)*vec3(1,1,1);
 }
+
+// ks(SI) max(r * v, 0)ksp
 inline vec3 specular(double ks, double ksm, double ksp, vec3 color, vec3 light, vec3 r, vec3 v) {
 	return ks * pairwiseMult(specularHighlight(ksm,color),light) * pow(max(r.normalize()*v.normalize(),0.0),ksp);
 }
@@ -36,10 +40,11 @@ vec3 raycast(Ray & ray) {
 
 	if (world->intersect(ray, t, n, m)) {
 		n = n.normalize();
-		// ambient light
+		
+		/** ambient light **/
 		retColor += pairwiseMult(m.color, world->getAmbientLight()) * m.k[MAT_KA];
 		
-		// diffuse light
+		/** diffuse light **/
 		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_DIRECTIONAL); 
 			it != world->getLightsEndIterator(LIGHT_DIRECTIONAL); it++) {
 				
@@ -60,8 +65,7 @@ vec3 raycast(Ray & ray) {
 			retColor += diffuse(m.k[MAT_KD], m.color, it->getLightInfo().color, i, n);
 		}
 		
-		//specular light
-		
+		/** specular light **/
 		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_DIRECTIONAL); 
 			it != world->getLightsEndIterator(LIGHT_DIRECTIONAL); it++) {
 				
@@ -83,10 +87,9 @@ vec3 raycast(Ray & ray) {
 
 			retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, d);
 		}
-	} else {
-		retColor = vec3(1,1,1);
 	}
 
+	// clip the colors if they're too intense
 	if (retColor[0] > 1.0)
 		retColor[0] = 1.0;
 	if (retColor[1] > 1.0) 
@@ -150,7 +153,7 @@ void reshape(int w, int h) {
 void myKeyboardFunc(unsigned char key, int x, int y) {
 	switch (key) {
         case 's':
-            film->saveFrame(); // image saving has been moved to the film class
+            film->saveFrame("./","raycaster"); // image saving has been moved to the film class
             break;
 		case 27:			// Escape key
 			exit(0);
@@ -159,9 +162,6 @@ void myKeyboardFunc(unsigned char key, int x, int y) {
 }
 
 void myMouseFunc(int button, int state, int x, int y) {
-	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-		cout << "x " << x << " y " << y << endl;
-	}
 	if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
 		cout << "right click down " << endl;
 		rightClick = true;
@@ -208,8 +208,7 @@ int main(int argc,char** argv) {
 	//Create OpenGL Window
 	glutInitWindowSize(IMAGE_WIDTH,IMAGE_HEIGHT);
 	glutInitWindowPosition(0,0);
-	glutCreateWindow("CS184 Raycaster");
-	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);	
+	glutCreateWindow("CS184 Raycaster - Richard Nguyen");
 	//Register event handlers with OpenGL.
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
