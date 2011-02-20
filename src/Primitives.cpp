@@ -18,13 +18,22 @@ Sphere::Sphere(vec4 center, double radius, MaterialInfo m) {
 
 //Checks for intersection with the given ray
 double Sphere::intersect(Ray & ray) {
-
+	vec4 e = ray.start();
+	vec4 d = ray.direction();
+	//cout << "center " << _p << " radius " << _r << " ray " << ray.direction() << " descriminant " <<  pow(d*(e-_p),2) - (d*d)*((e-_p)*(e-_p)-pow(_r,2)) << endl;
+	if ( pow(d*(e-_p),2) - (d*d)*((e-_p)*(e-_p)-pow(_r,2)) >= 0) {
+		return min(
+			(-1*d*(e-_p)+sqrt(pow(d*(e-_p),2) - (d*d)*((e-_p)*(e-_p)-pow(_r,2))))/(d*d),
+			(-1*d*(e-_p)-sqrt(pow(d*(e-_p),2) - (d*d)*((e-_p)*(e-_p)-pow(_r,2))))/(d*d));
+	}
     return numeric_limits<double>::infinity(); //no hit!
 }
 
 //Calculates the normal for the given position on this sphere.
 vec4 Sphere::calculateNormal(vec4 & position) {
-    IMPLEMENT_ME(__LINE__, __FILE__);
-
-	return vec4(0);
+	vec4 normal = ((position - _p) +vec4(0,0,0,1))/_r;
+	normal[VW] = 1.0;
+//	if (abs(position[VX]) <0.05 && abs(position[VY]) < 0.05)
+		//cout << "position " << position << " normal " << normal*_r << endl;
+	return normal;
 }

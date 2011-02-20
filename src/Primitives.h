@@ -32,6 +32,10 @@ public:
     double intersect(Ray & ray);
     vec4 calculateNormal(vec4 & position);
 	inline MaterialInfo& getMaterial() { return _m; }
+	void setK(int type, double val) { 
+		cout << "setting type " << type << " from " << _m.k[type];
+		_m.k[type] = val; 
+		cout << " to " << val << " result " << _m.k[type] << endl;}
 
 private:
     vec4 _p;

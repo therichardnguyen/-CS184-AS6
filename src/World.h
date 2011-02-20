@@ -1,4 +1,4 @@
-/*
+	/*
  * World.h
  *
  *  Created on: Feb 19, 2009
@@ -33,9 +33,9 @@ public:
 
 	inline vector<Light>::iterator getLightsBeginIterator(int type) { return _lights[type].begin(); }
     inline vector<Light>::iterator getLightsEndIterator(int type) { return _lights[type].end(); }
-
+	inline Sphere * getSphere(int s) { return &(_spheres[s]); }
 	inline Viewport& getViewport() { return _view; }
-
+	
 private:
 
     vector<Sphere> _spheres; // for now, all the geometry is spheres
