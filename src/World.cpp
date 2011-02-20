@@ -52,6 +52,7 @@ void World::loadScene(string filename) {
 	_lights[LIGHT_POINT].push_back(
 							Light(vec3(0,0,-14),0,
 							LightInfo(LIGHT_POINT,vec3(1.39,.2,.2))));
+							
 	
 	_ambientLight = vec3(.5,.2,.2);
 	

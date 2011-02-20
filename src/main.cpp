@@ -5,11 +5,13 @@ using namespace std;
 //****************************************************
 // Global Variables
 //****************************************************
+enum {AMBIENT, DIFFUSE, SPECULAR, ALL};
 World * world;
 Film * film;
-int frameCount = 0;
-bool rightClick = false;
+int frameCount = 0, lightsOn = ALL;
+bool rightClick = false, blinnphong = false;
 double rightClickX = 0, rightClickY = 0, ksm = 0, ksp = 0;
+
 // use this to multiply colors:
 inline vec3 pairwiseMult(const vec3 &a, const vec3 &b) {
 	return vec3(a[0]*b[0], a[1]*b[1], a[2]*b[2]);
@@ -29,6 +31,7 @@ inline vec3 specularHighlight(double ksm, vec3 color) {
 inline vec3 specular(double ks, double ksm, double ksp, vec3 color, vec3 light, vec3 r, vec3 v) {
 	return ks * pairwiseMult(specularHighlight(ksm,color),light) * pow(max(r.normalize()*v.normalize(),0.0),ksp);
 }
+
 //-------------------------------------------------------------------------------
 // Here you raycast a single ray, calculating the color of this ray.
 vec3 raycast(Ray & ray) {
@@ -42,50 +45,65 @@ vec3 raycast(Ray & ray) {
 		n = n.normalize();
 		
 		/** ambient light **/
-		retColor += pairwiseMult(m.color, world->getAmbientLight()) * m.k[MAT_KA];
+		if (lightsOn == AMBIENT || lightsOn == ALL)
+			retColor += pairwiseMult(m.color, world->getAmbientLight()) * m.k[MAT_KA];
 		
 		/** diffuse light **/
-		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_DIRECTIONAL); 
-			it != world->getLightsEndIterator(LIGHT_DIRECTIONAL); it++) {
+		if (lightsOn == DIFFUSE || lightsOn == ALL) {
+			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_DIRECTIONAL); 
+				it != world->getLightsEndIterator(LIGHT_DIRECTIONAL); it++) {
 				
-			i = (-1*(it->getDirection()));
+				i = (-1*(it->getDirection()));
 
-			retColor += diffuse(m.k[MAT_KD], m.color, it->getLightInfo().color, i, n);
-		}
-		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_SPOT); 
-			it != world->getLightsEndIterator(LIGHT_SPOT); it++) {
+				retColor += diffuse(m.k[MAT_KD], m.color, it->getLightInfo().color, i, n);
+			}
+			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_SPOT); 
+				it != world->getLightsEndIterator(LIGHT_SPOT); it++) {
 				
-		}
+			}
 		
-		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_POINT); 
-			it != world->getLightsEndIterator(LIGHT_POINT); it++) {
+			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_POINT); 
+				it != world->getLightsEndIterator(LIGHT_POINT); it++) {
 				
-			i = (it->getPosition() - vec3(ray.getPos(t),VW));
+				i = (it->getPosition() - vec3(ray.getPos(t),VW));
 
-			retColor += diffuse(m.k[MAT_KD], m.color, it->getLightInfo().color, i, n);
+				retColor += diffuse(m.k[MAT_KD], m.color, it->getLightInfo().color, i, n);
+			}
 		}
-		
 		/** specular light **/
-		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_DIRECTIONAL); 
-			it != world->getLightsEndIterator(LIGHT_DIRECTIONAL); it++) {
+		if (lightsOn == SPECULAR || lightsOn == ALL) {
+			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_DIRECTIONAL); 
+				it != world->getLightsEndIterator(LIGHT_DIRECTIONAL); it++) {
 				
-			i = ((it->getDirection()));
-			r = ((-1*i) +2*(i*n)*n);
 
-			retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, d);
-		}
-		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_SPOT); 
-			it != world->getLightsEndIterator(LIGHT_SPOT); it++) {
+				if (!blinnphong) {
+					i = ((it->getDirection()));
+		 			r = ((-1*i) +2*(i*n)*n);
+					retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, d);
+				} else {
+					i = ((-1*it->getDirection()));
+					r = (-1*d + i.normalize());
+					retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, n);
 				
-		}
+				}
+			}
+			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_SPOT); 
+				it != world->getLightsEndIterator(LIGHT_SPOT); it++) {
+				
+			}
 		
-		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_POINT); 
-			it != world->getLightsEndIterator(LIGHT_POINT); it++) {
-				
-			i = (-1*(it->getPosition()) + vec3(ray.getPos(t),VW));
-			r = ((-1*i) + 2*(i*n)*n);
-
-			retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, d);
+			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_POINT); 
+				it != world->getLightsEndIterator(LIGHT_POINT); it++) {
+				if(!blinnphong) {	
+					i = (-1*(it->getPosition()) + vec3(ray.getPos(t),VW));
+					r = ((-1*i) + 2*(i*n)*n);
+					retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, d);
+				} else {
+					i = (it->getPosition() - vec3(ray.getPos(t),VW));
+					r = (-1*d + i.normalize());
+					retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, n);
+				}
+			}
 		}
 	}
 
@@ -155,6 +173,14 @@ void myKeyboardFunc(unsigned char key, int x, int y) {
         case 's':
             film->saveFrame("./","raycaster"); // image saving has been moved to the film class
             break;
+		case 'b': 			// switch from Phong to Blinn-Phong model for shading model
+			blinnphong = !blinnphong;
+			glutPostRedisplay();
+			break;
+		case 9: 			// tab to switch from ambient,diffuse,specular,all
+			lightsOn = (lightsOn + 1) % 4;
+			glutPostRedisplay();
+			break;
 		case 27:			// Escape key
 			exit(0);
 			break;
@@ -162,6 +188,8 @@ void myKeyboardFunc(unsigned char key, int x, int y) {
 }
 
 void myMouseFunc(int button, int state, int x, int y) {
+	if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) 
+		cout << " x " << x << " y " << y << endl;
 	if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
 		cout << "right click down " << endl;
 		rightClick = true;
@@ -176,12 +204,12 @@ void myMouseFunc(int button, int state, int x, int y) {
 		world->getSphere(0)->getMaterial().k[MAT_KSM] = ksm;
 		world->getSphere(0)->getMaterial().k[MAT_KSP] = ksp;
 		glutPostRedisplay();
-		}
+	}
 } 
 
 void myMotionFunc(int x, int y) {
 	double boundedX = min(max(x,0), IMAGE_WIDTH);
-	double boundedY = min(max(y,2), IMAGE_HEIGHT);
+	double boundedY = min(max(abs(y-IMAGE_HEIGHT),2), IMAGE_HEIGHT);
     if (rightClick) {
 		world->getSphere(0)->setK(MAT_KSM, ((double) boundedX) / ((double) IMAGE_WIDTH));
 		world->getSphere(0)->setK(MAT_KSP, (boundedY / ((double) IMAGE_HEIGHT))*256);

@@ -6,5 +6,5 @@ Login: cs184-ez
 SID: 19349743
 
 Description:
-  Include Extra Credit implementations!
-  
+	- Hit 'tab' to cycle through ambient-light-only, diffuse-light-only, specular-light-only, or all light
+	- Hit 'b' to switch between Phong and Blinn-Phong shading
