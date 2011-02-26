@@ -11,6 +11,8 @@
 
 #include "global.h"
 #include "UCB/SceneInfo.h"
+#include "UCB/ParametricValue.h"
+#include "UCB/Scene.h"
 #include "Primitives.h"
 #include "Viewport.h"
 
@@ -20,7 +22,7 @@
  */
 class World {
 public:
-    World();
+    World(string filename);
     ~World();
 
 	void loadScene(string filename);
@@ -35,6 +37,8 @@ public:
     inline vector<Light>::iterator getLightsEndIterator(int type) { return _lights[type].end(); }
 	inline Sphere * getSphere(int s) { return &(_spheres[s]); }
 	inline Viewport& getViewport() { return _view; }
+	inline void RenderGroup(SceneGroup *i, mat4 t);
+	inline void RenderInstance(SceneInstance *n, mat4 t);
 	
 private:
 

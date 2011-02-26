@@ -15,7 +15,7 @@ Viewport::Viewport(vec4 eye, vec4 LL, vec4 UL, vec4 LR, vec4 UR, int width, int 
     _UR = UR;
     _pixelsWide = width;
     _pixelsHigh = height;
-	_raysPerPixel = 1;
+	_raysPerPixel = 4;
 	_incPP = (int)sqrt((float)_raysPerPixel);
 	_viewToWorld = identity3D();
 }

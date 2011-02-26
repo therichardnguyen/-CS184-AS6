@@ -5,9 +5,6 @@
 #include <fstream>
 #include <string>
 
-using namespace std;
-
-
 SceneLoader::SceneLoader(Scene &scene, string file) {
     err = &cout;
     scene._root = new SceneInstance();
@@ -883,6 +880,7 @@ bool SceneLoader::buildScene(string filename)
     int lastPos = 0;
     while (findOpenParen(file))
     {
+		cout << "found open paren" << endl;
         file.tellg();
         if (readCommand(file, line)) {
             if (line == "Include")

@@ -34,78 +34,82 @@ inline vec3 specular(double ks, double ksm, double ksp, vec3 color, vec3 light, 
 
 //-------------------------------------------------------------------------------
 // Here you raycast a single ray, calculating the color of this ray.
+
 vec3 raycast(Ray & ray) {
 	vec3 retColor(0,0,0);
-	vec3 d = vec3(ray.direction().normalize(),VW);
-
+	vec3 d = -vec3(ray.direction().normalize(),VW);
+	
     // storage for raycast
-	double t; vec3 n; MaterialInfo m; vec3 i; vec3 s; vec3 r; vec3 v;
+	double t; vec3 n; MaterialInfo m; vec3 i; vec3 s; vec3 r; vec3 v; 
+	// storage for shadowray
+	Ray shadow; double ts; vec3 ns; MaterialInfo ms; double falloff;
 
 	if (world->intersect(ray, t, n, m)) {
-		n = n.normalize();
-		
-		/** ambient light **/
+		vec4 pos = ray.getPos(t);
+		// ambient light
 		if (lightsOn == AMBIENT || lightsOn == ALL)
 			retColor += pairwiseMult(m.color, world->getAmbientLight()) * m.k[MAT_KA];
 		
-		/** diffuse light **/
-		if (lightsOn == DIFFUSE || lightsOn == ALL) {
-			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_DIRECTIONAL); 
-				it != world->getLightsEndIterator(LIGHT_DIRECTIONAL); it++) {
-				
-				i = (-1*(it->getDirection()));
-
-				retColor += diffuse(m.k[MAT_KD], m.color, it->getLightInfo().color, i, n);
-			}
-			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_SPOT); 
-				it != world->getLightsEndIterator(LIGHT_SPOT); it++) {
-				
-			}
+		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_DIRECTIONAL); 
+			it != world->getLightsEndIterator(LIGHT_DIRECTIONAL); it++) {
+			
+			i = (-1*(it->getDirection()));
+			
+			vec4 pos(ray.getPos(t));
+			vec4 dir(i,0);
+			vec4 src(pos+dir);
+			Ray shadow(pos,src,0.00001);
+			double ts; vec3 ns; MaterialInfo ms;
+			
+			// diffuse light
+			if(!(world->intersect(shadow,ts,ns,ms))){
+				if (lightsOn == DIFFUSE || lightsOn == ALL) 
+					retColor += diffuse(m.k[MAT_KD], m.color, it->getLightInfo().color, i, n);
 		
-			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_POINT); 
-				it != world->getLightsEndIterator(LIGHT_POINT); it++) {
-				
-				i = (it->getPosition() - vec3(ray.getPos(t),VW));
-
-				retColor += diffuse(m.k[MAT_KD], m.color, it->getLightInfo().color, i, n);
-			}
-		}
-		/** specular light **/
-		if (lightsOn == SPECULAR || lightsOn == ALL) {
-			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_DIRECTIONAL); 
-				it != world->getLightsEndIterator(LIGHT_DIRECTIONAL); it++) {
-				
-
-				if (!blinnphong) {
-					i = ((it->getDirection()));
-		 			r = ((-1*i) +2*(i*n)*n);
-					retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, d);
-				} else {
-					i = ((-1*it->getDirection()));
-					r = (-1*d + i.normalize());
-					retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, n);
-				
-				}
-			}
-			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_SPOT); 
-				it != world->getLightsEndIterator(LIGHT_SPOT); it++) {
-				
-			}
-		
-			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_POINT); 
-				it != world->getLightsEndIterator(LIGHT_POINT); it++) {
-				if(!blinnphong) {	
-					i = (-1*(it->getPosition()) + vec3(ray.getPos(t),VW));
-					r = ((-1*i) + 2*(i*n)*n);
-					retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, d);
-				} else {
-					i = (it->getPosition() - vec3(ray.getPos(t),VW));
-					r = (-1*d + i.normalize());
-					retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, n);
+				//specular light
+				if (lightsOn == SPECULAR || lightsOn == ALL) {
+					if (!blinnphong) {
+			 			r = ((-1*i) +2*(i*n)*n);
+						retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, d);
+					} else {
+						r = (d + i.normalize());
+						retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, n);
+					}
 				}
 			}
 		}
-	}
+	
+		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_POINT); 
+			it != world->getLightsEndIterator(LIGHT_POINT); it++) {
+			
+			i = (it->getPosition() - vec3(ray.getPos(t),VW));
+			falloff = pow((1/(abs(i.length()) + it->getLightInfo().deadDistance)),it->getLightInfo().falloff);
+			
+			vec4 intersection(ray.getPos(t));
+			vec4 src(it->getPosition(),1);
+			vec4 dir = intersection-src;
+			vec4 hit = intersection + dir*.00001;
+			Ray shadow(hit,src,-0.00001);
+			
+			double ts; vec3 ns; MaterialInfo ms;
+			// diffuse light
+			if(!(world->intersect(shadow,ts,ns,ms) && ts < 1)){
+				if (lightsOn == DIFFUSE || lightsOn == ALL) 
+					retColor += diffuse(m.k[MAT_KD], m.color, falloff*it->getLightInfo().color, i, n);
+		
+				// specular light
+				if (lightsOn == SPECULAR || lightsOn == ALL) {
+					if(!blinnphong) {	
+						r = ((-1*i) + 2*(i*n)*n);
+						retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, falloff*it->getLightInfo().color, r, d);
+					} else {
+						r = (d + i.normalize());
+						retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, falloff*it->getLightInfo().color, r, n);
+					}
+				}
+			}
+		}
+	 }
 
 	// clip the colors if they're too intense
 	if (retColor[0] > 1.0)
@@ -117,7 +121,6 @@ vec3 raycast(Ray & ray) {
 
 	return retColor;
 }
-
 //-------------------------------------------------------------------------------
 /// The display function
 void display() {
@@ -229,7 +232,7 @@ int main(int argc,char** argv) {
 	glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA);
 
 	// Load the world
-	world = new World(/*argv[1]*/);
+	world = new World(argv[1]);
 	// Allocate film for rendering
 	film = new Film(IMAGE_WIDTH, IMAGE_HEIGHT);
 
