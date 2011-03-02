@@ -37,8 +37,8 @@ inline vec3 specular(double ks, double ksm, double ksp, vec3 color, vec3 light, 
 
 vec3 raycast(Ray & ray,int depth) {
 	vec3 retColor(0,0,0);
+	vec3 sh(0,0,0);
 	vec3 d = -vec3(ray.direction().normalize(),VW);
-	
     // storage for raycast
 	double t; vec3 n; MaterialInfo m; vec3 i; vec3 s; vec3 r; vec3 v; 
 	// storage for shadowray
@@ -71,6 +71,7 @@ vec3 raycast(Ray & ray,int depth) {
 		
 				//specular light
 				if (lightsOn == SPECULAR || lightsOn == ALL) {
+					sh += specularHighlight(m.k[MAT_KSM],m.color);
 					if (!blinnphong) {
 			 			r = ((-1*i) +2*(i*n)*n);
 						retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, it->getLightInfo().color, r, d);
@@ -105,6 +106,7 @@ vec3 raycast(Ray & ray,int depth) {
 		
 				// specular light
 				if (lightsOn == SPECULAR || lightsOn == ALL) {
+					sh += specularHighlight(m.k[MAT_KSM],m.color);
 					if(!blinnphong) {	
 						r = ((-1*i) + 2*(i*n)*n);
 						retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, falloff*it->getLightInfo().color, r, d);
@@ -140,6 +142,7 @@ vec3 raycast(Ray & ray,int depth) {
 
 					// specular light
 					if (lightsOn == SPECULAR || lightsOn == ALL) {
+						sh += specularHighlight(m.k[MAT_KSM],m.color);
 						if(!blinnphong) {	
 							r = ((-1*i) + 2*(i*n)*n);
 							retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, falloff*it->getLightInfo().color, r, d);
@@ -161,7 +164,7 @@ vec3 raycast(Ray & ray,int depth) {
 			Ray reflectray(intersection, end, 0);
 			//cout << "View Direction " << vec3(d,VW)*n << " reflect Direction " << vec3(rnorm.normalize(),VW)*n << endl;
 			if (depth > 0)
-				retColor += m.k[MAT_KS]*raycast(reflectray, depth -1);
+				retColor += m.k[MAT_KS]*pairwiseMult(raycast(reflectray, depth - 1),specularHighlight(m.k[MAT_KSM],sh));
 			
 	 }
 
@@ -188,6 +191,7 @@ void display() {
 	// sampled using the Viewport and Ray classes.
 	// and stores the result using the Film class
 	if (developFilm) {
+		cout << "Begin rendering" << endl;
 		film->clear();
 		Viewport &view = world->getViewport();
 	    view.resetSampler();
@@ -240,8 +244,12 @@ void myKeyboardFunc(unsigned char key, int x, int y) {
 			break;
 		case 9: 			// tab to switch from ambient,diffuse,specular,all
 			lightsOn = (lightsOn + 1) % 4;
-			developFilm = true;
-			glutPostRedisplay();
+			if (lightsOn == AMBIENT)
+				cout << "Ambient component only" << endl;
+			if (lightsOn == DIFFUSE)
+				cout << "Diffuse component only" << endl;
+			if (lightsOn == SPECULAR) 
+				cout<< "Specular component only" << endl;
 			break;
 		case '=':			// '=' to increase the sample size per pixel
 			raysPerPixel += 1;
