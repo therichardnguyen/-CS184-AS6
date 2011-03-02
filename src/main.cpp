@@ -35,7 +35,7 @@ inline vec3 specular(double ks, double ksm, double ksp, vec3 color, vec3 light, 
 //-------------------------------------------------------------------------------
 // Here you raycast a single ray, calculating the color of this ray.
 
-vec3 raycast(Ray & ray) {
+vec3 raycast(Ray & ray,int depth) {
 	vec3 retColor(0,0,0);
 	vec3 d = -vec3(ray.direction().normalize(),VW);
 	
@@ -45,7 +45,9 @@ vec3 raycast(Ray & ray) {
 	Ray shadow; double ts; vec3 ns; MaterialInfo ms; double falloff;
 
 	if (world->intersect(ray, t, n, m)) {
-		vec4 pos = ray.getPos(t);
+
+		vec4 intersection(ray.getPos(t));
+		
 		// ambient light
 		if (lightsOn == AMBIENT || lightsOn == ALL)
 			retColor += pairwiseMult(m.color, world->getAmbientLight()) * m.k[MAT_KA];
@@ -58,11 +60,9 @@ vec3 raycast(Ray & ray) {
 			i = (-1*(it->getDirection()));
 			
 			// shadow ray
-			vec4 pos(ray.getPos(t));
 			vec4 dir(i,0);
-			vec4 src(pos+dir);
-			Ray shadow(pos,src,0.00001);
-			double ts; vec3 ns; MaterialInfo ms;
+			vec4 src(intersection+dir);
+			Ray shadow(intersection,src,0.00001);
 			
 			// diffuse light
 			if(!(world->intersect(shadow,ts,ns,ms))){
@@ -93,12 +93,10 @@ vec3 raycast(Ray & ray) {
 			falloff = pow((1/(abs(i.length()) + it->getLightInfo().deadDistance)),it->getLightInfo().falloff);
 			
 			// shadow ray
-			vec4 intersection(ray.getPos(t));
 			vec4 src(it->getPosition(),1);
 			vec4 dir = intersection-src;
 			vec4 hit = intersection + dir*.00001;
 			Ray shadow(hit,src,-0.00001);
-			double ts; vec3 ns; MaterialInfo ms;
 			
 			// diffuse light
 			if(!(world->intersect(shadow,ts,ns,ms) && ts < 1)){
@@ -128,14 +126,12 @@ vec3 raycast(Ray & ray) {
 				// fall off (distance)
 				vec3 l = (vec3(ray.getPos(t),VW) - it->getPosition());
 				falloff = pow(((it->getDirection())*l.normalize()),it->getLightInfo().angularFalloff)/ pow(abs(i.length()) + it->getLightInfo().deadDistance,it->getLightInfo().falloff);
-				//cout << "falloff " << falloff << " num " << pow((it->getDirection()*l),it->getLightInfo().angularFalloff) << " denum " << pow(abs(i.length()) + it->getLightInfo().deadDistance,it->getLightInfo().falloff) << " dp "  << (it->getDirection()*l)<< endl;
+
 				// shadow ray
-				vec4 intersection(ray.getPos(t));
 				vec4 src(it->getPosition(),1);
 				vec4 dir = intersection-src;
 				vec4 hit = intersection + dir*.00001;
 				Ray shadow(hit,src,-0.00001);
-				double ts; vec3 ns; MaterialInfo ms;
 
 				// diffuse light
 				if(!(world->intersect(shadow,ts,ns,ms) && ts < 1)){
@@ -154,6 +150,19 @@ vec3 raycast(Ray & ray) {
 					}
 				}
 			}
+			
+			
+			// reflection ray
+			
+			double c1 = (n*vec3(d,VW));
+			vec3 reflect = (vec3(-d,VW)) + 2*n*c1;
+			vec4 rnorm = vec4(reflect.normalize(),0);
+			vec4 end = intersection + rnorm;
+			Ray reflectray(intersection, end, 0);
+			//cout << "View Direction " << vec3(d,VW)*n << " reflect Direction " << vec3(rnorm.normalize(),VW)*n << endl;
+			if (depth > 0)
+				retColor += m.k[MAT_KS]*raycast(reflectray, depth -1);
+			
 	 }
 
 	// clip the colors if they're too intense
@@ -185,7 +194,7 @@ void display() {
 		vec2 point; Ray ray;
 	    while(view.getSample(point, ray)) {
 			ray.transform(view.getViewToWorld());
-	        vec3 c = raycast(ray);
+	        vec3 c = raycast(ray,4);
 	        film->expose(c, point);
 	    }
 		developFilm = false;
@@ -309,7 +318,7 @@ int main(int argc,char** argv) {
 	glutMouseFunc(myMouseFunc);
 	glutMotionFunc(myMotionFunc);
 	glutPassiveMotionFunc(myMotionFunc);
-
+	
 	//And Go!
 	glutMainLoop();
 }
