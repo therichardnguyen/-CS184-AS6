@@ -8,8 +8,8 @@ using namespace std;
 enum {AMBIENT, DIFFUSE, SPECULAR, ALL};
 World * world;
 Film * film;
-int frameCount = 0, lightsOn = ALL;
-bool rightClick = false, blinnphong = false;
+int frameCount = 0, lightsOn = ALL, raysPerPixel=4;
+bool rightClick = false, blinnphong = false, developFilm = true;
 double rightClickX = 0, rightClickY = 0, ksm = 0, ksp = 0;
 
 // use this to multiply colors:
@@ -50,11 +50,14 @@ vec3 raycast(Ray & ray) {
 		if (lightsOn == AMBIENT || lightsOn == ALL)
 			retColor += pairwiseMult(m.color, world->getAmbientLight()) * m.k[MAT_KA];
 		
+		// for directional lights
 		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_DIRECTIONAL); 
 			it != world->getLightsEndIterator(LIGHT_DIRECTIONAL); it++) {
 			
+			// incidence vector
 			i = (-1*(it->getDirection()));
 			
+			// shadow ray
 			vec4 pos(ray.getPos(t));
 			vec4 dir(i,0);
 			vec4 src(pos+dir);
@@ -79,19 +82,24 @@ vec3 raycast(Ray & ray) {
 			}
 		}
 	
+		// for point lights
 		for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_POINT); 
 			it != world->getLightsEndIterator(LIGHT_POINT); it++) {
 			
+			// incidence vector
 			i = (it->getPosition() - vec3(ray.getPos(t),VW));
+			
+			// fall off
 			falloff = pow((1/(abs(i.length()) + it->getLightInfo().deadDistance)),it->getLightInfo().falloff);
 			
+			// shadow ray
 			vec4 intersection(ray.getPos(t));
 			vec4 src(it->getPosition(),1);
 			vec4 dir = intersection-src;
 			vec4 hit = intersection + dir*.00001;
 			Ray shadow(hit,src,-0.00001);
-			
 			double ts; vec3 ns; MaterialInfo ms;
+			
 			// diffuse light
 			if(!(world->intersect(shadow,ts,ns,ms) && ts < 1)){
 				if (lightsOn == DIFFUSE || lightsOn == ALL) 
@@ -109,6 +117,43 @@ vec3 raycast(Ray & ray) {
 				}
 			}
 		}
+		
+		// for spot lights
+			for(vector<Light>::iterator it = world->getLightsBeginIterator(LIGHT_SPOT); 
+				it != world->getLightsEndIterator(LIGHT_SPOT); it++) {
+
+				// incidence vector
+				i = (it->getPosition() - vec3(ray.getPos(t),VW));
+
+				// fall off (distance)
+				vec3 l = (vec3(ray.getPos(t),VW) - it->getPosition());
+				falloff = pow(((it->getDirection())*l.normalize()),it->getLightInfo().angularFalloff)/ pow(abs(i.length()) + it->getLightInfo().deadDistance,it->getLightInfo().falloff);
+				//cout << "falloff " << falloff << " num " << pow((it->getDirection()*l),it->getLightInfo().angularFalloff) << " denum " << pow(abs(i.length()) + it->getLightInfo().deadDistance,it->getLightInfo().falloff) << " dp "  << (it->getDirection()*l)<< endl;
+				// shadow ray
+				vec4 intersection(ray.getPos(t));
+				vec4 src(it->getPosition(),1);
+				vec4 dir = intersection-src;
+				vec4 hit = intersection + dir*.00001;
+				Ray shadow(hit,src,-0.00001);
+				double ts; vec3 ns; MaterialInfo ms;
+
+				// diffuse light
+				if(!(world->intersect(shadow,ts,ns,ms) && ts < 1)){
+					if (lightsOn == DIFFUSE || lightsOn == ALL) 
+						retColor += diffuse(m.k[MAT_KD], m.color, falloff*it->getLightInfo().color, i, n);
+
+					// specular light
+					if (lightsOn == SPECULAR || lightsOn == ALL) {
+						if(!blinnphong) {	
+							r = ((-1*i) + 2*(i*n)*n);
+							retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, falloff*it->getLightInfo().color, r, d);
+						} else {
+							r = (d + i.normalize());
+							retColor += specular(m.k[MAT_KS], m.k[MAT_KSM], m.k[MAT_KSP], m.color, falloff*it->getLightInfo().color, r, n);
+						}
+					}
+				}
+			}
 	 }
 
 	// clip the colors if they're too intense
@@ -133,15 +178,18 @@ void display() {
 	// Calls the raycast method on each pixel
 	// sampled using the Viewport and Ray classes.
 	// and stores the result using the Film class
-	film->clear();
-	Viewport &view = world->getViewport();
-    view.resetSampler();
-	vec2 point; Ray ray;
-    while(view.getSample(point, ray)) {
-		ray.transform(view.getViewToWorld());
-        vec3 c = raycast(ray);
-        film->expose(c, point);
-    }
+	if (developFilm) {
+		film->clear();
+		Viewport &view = world->getViewport();
+	    view.resetSampler();
+		vec2 point; Ray ray;
+	    while(view.getSample(point, ray)) {
+			ray.transform(view.getViewToWorld());
+	        vec3 c = raycast(ray);
+	        film->expose(c, point);
+	    }
+		developFilm = false;
+	}
 	film->show();
 
 	//Now that we've drawn on the buffer, swap the drawing buffer and the displaying buffer.
@@ -174,14 +222,30 @@ void reshape(int w, int h) {
 void myKeyboardFunc(unsigned char key, int x, int y) {
 	switch (key) {
         case 's':
-            film->saveFrame("./","raycaster"); // image saving has been moved to the film class
+            film->saveFrame("./","raytrace"); // image saving has been moved to the film class
             break;
 		case 'b': 			// switch from Phong to Blinn-Phong model for shading model
 			blinnphong = !blinnphong;
+			developFilm = true;
 			glutPostRedisplay();
 			break;
 		case 9: 			// tab to switch from ambient,diffuse,specular,all
 			lightsOn = (lightsOn + 1) % 4;
+			developFilm = true;
+			glutPostRedisplay();
+			break;
+		case '=':			// '=' to increase the sample size per pixel
+			raysPerPixel += 1;
+			world->getViewport().setRaysPerPixel(raysPerPixel);
+			break;
+		case '-':			// '=' to increase the sample size per pixel
+			if (raysPerPixel > 1) {
+				raysPerPixel -= 1;
+				world->getViewport().setRaysPerPixel(raysPerPixel);
+			}
+			break;
+		case 'r':			// 'r' to redevelop the film
+			developFilm = true;
 			glutPostRedisplay();
 			break;
 		case 27:			// Escape key
@@ -221,8 +285,6 @@ void myMotionFunc(int x, int y) {
 }
 
 
-
-
 //-------------------------------------------------------------------------------
 /// Initialize the environment
 int main(int argc,char** argv) {
@@ -239,7 +301,7 @@ int main(int argc,char** argv) {
 	//Create OpenGL Window
 	glutInitWindowSize(IMAGE_WIDTH,IMAGE_HEIGHT);
 	glutInitWindowPosition(0,0);
-	glutCreateWindow("CS184 Raycaster - Richard Nguyen");
+	glutCreateWindow("CS184 Raytracer - Richard Nguyen");
 	//Register event handlers with OpenGL.
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);

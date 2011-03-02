@@ -29,6 +29,10 @@
     (type 1) (color 1.39 .2 .2)
 )
 
+(Light spt
+    (type 2) (color 1.39 .2 .2) (angularfalloff .5)
+)
+
 (Camera cam
     (perspective 1)
     (l -1) (r 1) (b -1) (t 1) (n 3) # no far plane 
@@ -41,7 +45,7 @@
                            0 0 .5 0
                            0 0 0 0)) # points toward (.5,.5,-.5)
     (I amb1 amb)
-    (I pt1 pt (T 0 0 -14))
+    (I pt1 spt (T 0 0 -14))
     (I s1 sph1  (T -2.5 -1.5 -17.0))
     (I s2 sph2 (T 0 4.0 -25)) 
     (I s3 sph3 (T 1.5 -1.5 -10.0))

@@ -34,7 +34,7 @@ public:
 
 	inline int getW() { return _pixelsWide; }
 	inline int getH() { return _pixelsHigh; }
-	inline void setRaysPerPixel(int rpp) { _raysPerPixel = rpp; }
+	inline void setRaysPerPixel(int rpp) { _raysPerPixel = rpp; _incPP = (int)sqrt((float)_raysPerPixel); cout << "raysPerPixel " << _raysPerPixel << endl; }
 
 	// if the viewport is transformed in space, use this to transform rays out
 	inline const mat4& getViewToWorld() { return _viewToWorld; }

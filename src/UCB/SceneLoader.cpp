@@ -683,6 +683,7 @@ bool SceneLoader::doLight(istream &str, string &name)
                         *err << "Type with no parameters at "; errLine(str.tellg());
                     } else {
                         cleanAfter(values, 1);
+						cout << values[0] << endl;
                         n->_light->_type = values[0];
                     }
                 } else if (cmd == "falloff") {

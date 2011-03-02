@@ -63,6 +63,8 @@ void World::RenderGroup(SceneGroup *i, mat4 t)
 				_lights[l.type].push_back(Light(vec3(t*vec4(0,0,0,1),VW),0, l));
 			}else if (l.type == LIGHT_DIRECTIONAL){
 				_lights[l.type].push_back(Light(0,vec3(t*vec4(0,0,-1,0),VW), l));
+			}else if (l.type == LIGHT_SPOT) {
+				_lights[l.type].push_back(Light(vec3(t*vec4(0,0,0,1),VW),vec3(t*vec4(0,0,-1,0),VW), l));
 			}else if (l.type == LIGHT_AMBIENT)
 				_ambientLight = l.color;
 				
@@ -103,6 +105,14 @@ void World::loadScene(string filename) {
 	// for as4, you can optionally hard-code the scene.  For as5 and as6 it must be loaded from a file.
 	Scene *scene = new Scene(filename);
 	RenderInstance(scene->getRoot(),mat4(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),vec4(0,0,0,1)));
+	cout << "found: " << _lights[LIGHT_POINT].size() << " point lights, " <<  _lights[LIGHT_DIRECTIONAL].size() << " directional lights, " 
+		<< _lights[LIGHT_SPOT].size() << " spot lights" << endl;
+	for(vector<Light>::iterator it = _lights[LIGHT_POINT].begin();it != _lights[LIGHT_POINT].end(); it++) 
+		cout << "Point light: " << it->getPosition() << endl;
+		for(vector<Light>::iterator it = _lights[LIGHT_DIRECTIONAL].begin();it != _lights[LIGHT_DIRECTIONAL].end(); it++) 
+			cout << "Directional light: " << it->getDirection() << endl;
+	for(vector<Light>::iterator it = _lights[LIGHT_SPOT].begin();it != _lights[LIGHT_SPOT].end(); it++) 
+		cout << "spot light: " << it->getPosition() << " , " << it->getDirection() << " angularfalloff " << it->getLightInfo().angularFalloff << endl; 
 }
 
 

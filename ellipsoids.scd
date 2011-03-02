@@ -53,6 +53,10 @@
     (type 1) (color 1.39 1.2 1.0) (falloff 2) (deaddistance .01)
 )
 
+(Light spot
+    (type 2) (color 1.39 1.2 1.0) (falloff 1) (angularfalloff  .) (deaddistance .01)
+)
+
 (Light sunlt
     (type 1) (color 1.39 1.2 1.0) (falloff 0) (deaddistance .01)
 )
@@ -84,17 +88,17 @@
 
 (G scene
     (I cam1 cam)
-    (I dir1 dir (Xform       -.9304  0  .3665 0
-                             .1444  -.9191  .3665 0
-                             .3369  .3939 .8552 0
-                             0  0   0 1)) # points toward (.5,.5,-.5)
-    (I amb1 amb)
-    (I pt1 pt (T 0 0 -2.5))
-    (I f face (T 0 -.62 -5))
+    ##(I dir1 dir (Xform       -.9304  0  .3665 0
+      ##                       .1444  -.9191  .3665 0
+        ##                     .3369  .3939 .8552 0
+          ##                   0  0   0 1)) # points toward (.5,.5,-.5)
+    ##(I amb1 amb)
+    (I pt1 spot (T 0 0 -2.5)) ##
+    ##(I f face (T 0 -.62 -5))
     (I floor usph (S 1000 .001 1000) (T 0 -4 0))
     (I sky ssph (S 2000 2000 .001) (T 0 0 -20))
     (I sun ysph (S 3 3 .002) (T -5 5 -20))
-    (I sl sunlt (T -5 5 -19))
+    ##(I sl sunlt (T -5 5 -19))
 )
 
 (Render scene)
