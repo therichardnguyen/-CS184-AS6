@@ -41,7 +41,7 @@ bool Viewport::getSample(vec2 &p, Ray &r) {
 
 	// friendly progress counter
     int soFar = int( 100*((floor(_i)+1)*(floor(_j)+1) / (double) (_pixelsWide * _pixelsHigh)) );
-    if (soFar > _percentage+24) {
+    if (soFar > _percentage+5) {
     	_percentage = soFar;
     	cout << soFar << "% Done." << endl;
     }

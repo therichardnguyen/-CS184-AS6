@@ -15,6 +15,7 @@
 #include "UCB/Scene.h"
 #include "Primitives.h"
 #include "Viewport.h"
+#include "BoundingVolume.h"
 
 /**
  * The World forms a container for lights and primitives
@@ -39,7 +40,8 @@ public:
 	inline Viewport& getViewport() { return _view; }
 	inline void RenderGroup(SceneGroup *i, mat4 t);
 	inline void RenderInstance(SceneInstance *n, mat4 t);
-	
+	void test();
+	void toggleAABB() {aabbOn = !aabbOn;}
 private:
 
     vector<Sphere> _spheres; // for now, all the geometry is spheres
@@ -47,6 +49,8 @@ private:
 	vec3 _ambientLight; // ambient lights just sum to a world-wide value
 	
 	Viewport _view;
+	BoundingVolume _aabb;
+	bool aabbOn;
 };
 
 #endif /* WORLD_H_ */

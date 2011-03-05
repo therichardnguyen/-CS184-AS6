@@ -36,15 +36,27 @@ public:
 	void setK(int type, double val) { _m.k[type] = val; }
 	mat4 m2w() { return _modelToWorld; }
 	mat4 w2m() { return _worldToModel; }
+	vec3 center() { return vec3(_center,VW); }
+	double radius() {return _r;}
+	double xmax() {return max(x1,x2);}
+	double xmin(){return min(x1,x2);}
+	double ymax(){return max(y1,y2);}
+	double ymin(){return min(y1,y2);}
+	double zmax(){return max(z1,z2);}
+	double zmin(){return min(z1,z2);}
 
 private:
-    vec4 _p;
+    vec4 _p,_center;
     double _r;
 	MaterialInfo _m;
 
 	// these won't be needed until you want to stretch the spheres:
     mat4 _modelToWorld;
     mat4 _worldToModel;
+
+	// to calculate bounding volumes
+	double x1,x2,y1,y2,z1,z2;
+	//mat4 r;
 };
 
 #endif /* PRIMITIVE_H_ */

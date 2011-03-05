@@ -11,6 +11,9 @@ Film * film;
 int frameCount = 0, lightsOn = ALL, raysPerPixel=4;
 bool rightClick = false, blinnphong = false, developFilm = true;
 double rightClickX = 0, rightClickY = 0, ksm = 0, ksp = 0;
+clock_t begin, end;
+
+double hits = 0, misses = 0;
 
 // use this to multiply colors:
 inline vec3 pairwiseMult(const vec3 &a, const vec3 &b) {
@@ -45,7 +48,8 @@ vec3 raycast(Ray & ray,int depth) {
 	Ray shadow; double ts; vec3 ns; MaterialInfo ms; double falloff;
 
 	if (world->intersect(ray, t, n, m)) {
-
+		//cout << "Hit " << ray.start() << " and direction " << ray.direction() << endl;
+		hits += 1;
 		vec4 intersection(ray.getPos(t));
 		
 		// ambient light
@@ -162,11 +166,15 @@ vec3 raycast(Ray & ray,int depth) {
 			vec4 rnorm = vec4(reflect.normalize(),0);
 			vec4 end = intersection + rnorm;
 			Ray reflectray(intersection, end, 0);
-			//cout << "View Direction " << vec3(d,VW)*n << " reflect Direction " << vec3(rnorm.normalize(),VW)*n << endl;
 			if (depth > 0)
 				retColor += m.k[MAT_KS]*pairwiseMult(raycast(reflectray, depth - 1),specularHighlight(m.k[MAT_KSM],sh));
 			
-	 }
+			//cout << "Hit " << ray.start() << " and direction " << ray.direction() << " color" << retColor<< endl;
+		
+	} else {
+		misses += 1;
+		//cout << "Miss " << ray.start() << " and direction " << ray.direction() << " color" << retColor<< endl;
+	}
 
 	// clip the colors if they're too intense
 	if (retColor[0] > 1.0)
@@ -196,11 +204,21 @@ void display() {
 		Viewport &view = world->getViewport();
 	    view.resetSampler();
 		vec2 point; Ray ray;
+		begin = clock();
 	    while(view.getSample(point, ray)) {
 			ray.transform(view.getViewToWorld());
 	        vec3 c = raycast(ray,4);
 	        film->expose(c, point);
 	    }
+		cout << "There were " << hits*100/(hits+misses) << "% hits" <<endl;
+		end = clock();
+		//cout << begin << "," << end<<endl;
+		if (double(difftime(end,begin)/CLOCKS_PER_SEC) < 1.0)
+			printf("It took %.2f ms to render this image.\n",double((difftime(end,begin)/CLOCKS_PER_SEC)*1000));
+		else 
+			printf("It took %.2f secs to render this image.\n",double((difftime(end,begin)/CLOCKS_PER_SEC)));
+			
+		//cout << "Rendering time: " << double(difftime(end,begin)/CLOCKS_PER_SEC) << endl;
 		developFilm = false;
 	}
 	film->show();
@@ -262,6 +280,11 @@ void myKeyboardFunc(unsigned char key, int x, int y) {
 			}
 			break;
 		case 'r':			// 'r' to redevelop the film
+			developFilm = true;
+			glutPostRedisplay();
+			break;
+		case 'h':
+			world->toggleAABB();
 			developFilm = true;
 			glutPostRedisplay();
 			break;
@@ -327,6 +350,16 @@ int main(int argc,char** argv) {
 	glutMotionFunc(myMotionFunc);
 	glutPassiveMotionFunc(myMotionFunc);
 	
+	//test
+	vec4 a(0,-10,0,1); vec4 b(0,-1,0,0); vec4 c(10,-10,-10,1); vec4 d(-1,1,1,0); vec4 e(15,15,0,1);
+	Ray t1 = Ray(a,b,0);
+	Ray t2 = Ray(c,d,0);
+	Ray t3 = Ray(a,e,0);
+	
+	BoundingVolume test;
+	//cout << test.intersect(t1) << endl;
+	
+	world->test();
 	//And Go!
 	glutMainLoop();
 }

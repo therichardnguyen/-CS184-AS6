@@ -14,28 +14,36 @@
 
 World::World(string filename) {
 	loadScene(filename);
+	aabbOn = true;
+	cout << "There are " << _spheres.size() << " spheres" << endl;
+	_aabb = *(new BoundingVolume(_spheres,1));
+	_aabb.print(0);
 }
 
 World::~World() {}
 
 bool World::intersect(Ray & r, double & bestT, vec3 &outn, MaterialInfo &outm) {
-	double thisT;
-	Ray w2mRay;
-	bestT = numeric_limits<double>::infinity();
-	for (vector<Sphere>::iterator it = _spheres.begin();it != _spheres.end();it++) {
-		w2mRay = Ray(r);
-		w2mRay.transform(it->w2m());
-		thisT = it->intersect(w2mRay);
-		if (thisT<bestT && thisT>=0){
-			vec4 p = w2mRay.getPos(thisT);
-			outn = vec3(it->w2m().transpose() * it->calculateNormal(p),VW);
-			outn.normalize();
-			outm = it->getMaterial();
-			bestT = thisT;
+	if (aabbOn) {
+		return _aabb.intersect(r,bestT,outn,outm); 
+	} else {
+		double thisT;
+		Ray w2mRay;
+		bestT = numeric_limits<double>::infinity();
+		for (vector<Sphere>::iterator it = _spheres.begin();it != _spheres.end();it++) {
+			w2mRay = Ray(r);
+			w2mRay.transform(it->w2m());
+			thisT = it->intersect(w2mRay);
+			if (thisT<bestT && thisT>=0){
+				vec4 p = w2mRay.getPos(thisT);
+				outn = vec3(it->w2m().transpose() * it->calculateNormal(p),VW);
+				outn.normalize();
+				outm = it->getMaterial();
+				bestT = thisT;
+			}
 		}
-	}
 				
-	return bestT < numeric_limits<double>::infinity();
+		return bestT < numeric_limits<double>::infinity();
+	}
 }
 
 void World::RenderGroup(SceneGroup *i, mat4 t) 
@@ -115,5 +123,29 @@ void World::loadScene(string filename) {
 		cout << "spot light: " << it->getPosition() << " , " << it->getDirection() << " angularfalloff " << it->getLightInfo().angularFalloff << endl; 
 }
 
-
+void World::test() {
+	vec4 start(0,0,0,1);
+	vec4 dir(-0.0395172, 0.091127, -0.995055, 0);
+	vec4 end(start+dir);
+	Ray test(start,end,0);
+	
+	double a; vec3 n; MaterialInfo m;
+	if (_aabb.intersect(test,a,n,m))
+		cout << "Successful Intersection" << endl;
+	else 
+		cout << "Failed Intersection" << endl;
+	/* // print spheres
+	for (vector<Sphere>::iterator it=_spheres.begin(); it!=_spheres.end();it++){
+		cout << "Sphere: " << endl;
+		cout << it->m2w() << endl;
+		cout << "\tc " << it->center() << endl;
+		cout << "\tr " << it->radius() << endl;
+		cout << "\tx " << it->xmin() << " , " << it->xmax() << endl;
+		cout << "\ty " << it->ymin() << " , " << it->ymax() << endl;
+		cout << "\tz " << it->zmin() << " , " << it->zmax() << endl;
+	}	
+	*/
+	string s;
+	//cin >> s;
+}
 
